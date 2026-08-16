@@ -62,8 +62,11 @@ export interface SchemaExtractionStrategySpec<Input, Output> {
   /** Parses the model's raw text reply into a structured Output, or null
    * if unparseable. A plain function, not a schema-description object --
    * keeps this library free of any JSON-schema/validation runtime
-   * dependency. */
-  parse: (raw: string) => Output | null
+   * dependency. Takes `input` because real parsing is often only possible
+   * with per-call context (e.g. extractGroundedValues needs that call's own
+   * live column list to tell a real column name from a hallucinated one) --
+   * a parser that needs none of it can just ignore the second argument. */
+  parse: (raw: string, input: Input) => Output | null
   /** Given the original Input and the parsed Output, decides whether every
    * extracted value is actually grounded (a literal substring of Input,
    * present in a live enum, etc.) -- generateFindParams.ts's isGrounded()/
