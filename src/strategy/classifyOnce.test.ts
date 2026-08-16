@@ -164,4 +164,18 @@ describe('runSchemaExtractionStrategy', () => {
     ])
     expect(caller.calls[0].system).toBe('Extract a value from: say hello please')
   })
+
+  it('passes Input through to parse, not just raw', async () => {
+    const caller = fakeCaller('anything')
+    // parse ignores the raw reply entirely and echoes Input back -- proves
+    // parse actually receives Input rather than being called raw-only.
+    const echoesInput = extractionSpec({
+      parse: (_raw, input) => ({ value: `input was: ${input}` }),
+      groundingCheck: () => true,
+    })
+    const result = await runSchemaExtractionStrategy(echoesInput, caller, 'say hello please', [
+      { role: 'user', text: 'say hello please' },
+    ])
+    expect(result).toEqual({ value: 'input was: say hello please' })
+  })
 })

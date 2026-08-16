@@ -89,7 +89,7 @@ export async function runSchemaExtractionStrategy<Input, Output>(
   for await (const event of caller.streamTurn({ model: spec.model, system, messages, signal })) {
     if (event.type === 'text') raw += event.text
   }
-  const parsed = spec.parse(raw)
+  const parsed = spec.parse(raw, input)
   if (parsed === null) return null
   return spec.groundingCheck(input, parsed) ? parsed : null
 }
