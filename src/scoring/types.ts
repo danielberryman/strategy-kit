@@ -20,13 +20,21 @@ export interface FixtureSuite<Input, Expected> {
   cases: readonly FixtureCase<Input, Expected>[]
 }
 
-// Phase 3 only scores closed-label strategies -- there is no
-// runSchemaExtractionStrategy yet, and these 4 metrics (accuracy,
-// confusion matrix, majority vote, consistency) are inherently
-// label-shaped. FixtureSuite itself stays generic so schema-extraction
-// scoring can reuse it later without a breaking change; only this alias
-// and FixedComparisonBackend.run() are narrowed to closed-label.
+// Phase 3 only scored closed-label strategies -- there was no
+// runSchemaExtractionStrategy yet, and confusion-matrix/majority-vote are
+// inherently label-shaped. FixtureSuite itself stayed generic so
+// schema-extraction scoring could reuse it later without a breaking
+// change; this alias and FixedComparisonBackend.run() stay narrowed to
+// closed-label. SchemaExtractionFixtureSuite (below) is that later reuse.
 export type ClosedLabelFixtureSuite<Label extends string> = FixtureSuite<ModelCallerMessage[], Label>
+
+/** Schema-extraction's analog of ClosedLabelFixtureSuite -- unlike that
+ * alias, Input/Output aren't pinned to a fixed pair, since every
+ * schema-extraction strategy has its own bespoke Input/Output shape (no
+ * shared "the input is always messages" assumption applies here). A pure
+ * alias, same posture as ClosedLabelFixtureSuite -- carries no fields of
+ * its own beyond FixtureSuite's. */
+export type SchemaExtractionFixtureSuite<Input, Output> = FixtureSuite<Input, Output>
 
 export interface FixedComparisonRun<Label extends string> {
   runIndex: number
@@ -66,4 +74,44 @@ export interface FixedComparisonResult<Input, Label extends string> {
   declaredShapeHash: string
   fixtureSuiteHash: string
   perCase: readonly FixedComparisonCaseResult<Input, Label>[]
+}
+
+// Schema-extraction's analog of FixedComparisonRun/CaseResult/Result. No
+// ConfusionMatrix/MajorityWrongCase equivalent -- those are inherently
+// label-shaped (a fixed, enumerable set of possible answers); an arbitrary
+// Output has neither a fixed value set nor a meaningful "columns" axis.
+// `output: Output | null` -- `null` is runSchemaExtractionStrategy's
+// unparseable/ungrounded sentinel, same role 'unparseable' plays for
+// closed-label.
+export interface SchemaExtractionRun<Output> {
+  runIndex: number
+  output: Output | null
+}
+
+export interface SchemaExtractionCaseResult<Input, Output> {
+  caseId: string
+  input: Input
+  expected: Output
+  runs: readonly SchemaExtractionRun<Output>[]
+}
+
+export interface SchemaExtractionComparisonResult<Input, Output> {
+  suiteId: string
+  strategyId: string
+  model: string
+  repeats: number
+  totalCalls: number
+  totalCorrect: number
+  aggregateAccuracy: number
+  perRunAccuracy: readonly number[]
+  /** A case whose runs didn't all produce the same output (by `keyOf`),
+   * regardless of correctness. */
+  inconsistentCases: readonly SchemaExtractionCaseResult<Input, Output>[]
+  /** A case where the most-common output across repeats (by `keyOf`)
+   * still doesn't match `expected` (by `isEqual`) -- the schema-extraction
+   * analog of majorityWrongCases. */
+  majorityWrongCases: readonly SchemaExtractionCaseResult<Input, Output>[]
+  declaredShapeHash: string
+  fixtureSuiteHash: string
+  perCase: readonly SchemaExtractionCaseResult<Input, Output>[]
 }

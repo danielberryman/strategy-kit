@@ -69,30 +69,47 @@
   new suites (`pseudonymize.test.ts`, `capture.test.ts`). 49 tests total
   across 12 suites, `npm run typecheck`/`test`/`build` all clean.
 
-## Not yet built
+- Phase 5 (hub-side, no commits in this repo): hub adapters
+  (`hub/lib/strategyKitAdapters/`) and the first migrated call site,
+  `classifyRoute.ts`, live entirely in the `hub` repo -- see ledger subject
+  `ollama-call-strategy-deep-module` and hub's own commit history
+  (`ADR-0155 Phase 5: hub strategy-kit adapters, migrate classifyRoute to
+  the strategy registry`). Nothing to show for it in *this* repo's log.
+- Phase 6 (this repo): `runSchemaExtractionStrategy` (`src/strategy/
+  classifyOnce.ts`, next to `runClosedLabelStrategy`) -- the schema-
+  extraction analog Phase 5's own note above flagged as missing, needed
+  before any schema-extraction call site (e.g. `generateFindParams.ts`'s
+  `extractGroundedValues` family) can migrate. Plus its scoring backend,
+  `SchemaExtractionComparisonBackend` (`src/scoring/
+  schemaExtractionComparison.ts`) -- `FixedComparisonBackend`'s confusion-
+  matrix/majority-vote scoring is inherently label-shaped and doesn't
+  generalize to arbitrary structured output, so this is a distinct `run()`
+  scoring by caller-supplied `isEqual`/`keyOf` (defaulting to strict
+  canonicalized-JSON equality; a caller whose Output is order-independent,
+  e.g. `GroundedValue[]`, supplies its own set-equality ported from that
+  call site's real benchmark script). Also: both `ClosedLabelStrategySpec`
+  and `SchemaExtractionStrategySpec`'s `system` (and closed-label's
+  `labels`) now accept `T | ((input: Input) => T)`, not just a fixed value
+  -- `selectTable`/`buildClauses`' closed-label call sites build their
+  prompt and candidate set live per call, which the old fixed-value-only
+  type couldn't express. `hash.ts`'s `declaredShapeOf()` was fixed to match
+  (a function value was silently dropped by `JSON.stringify` before this --
+  two specs with different resolver logic would have hashed identically).
+  `FixedComparisonBackend.run()` now hard-errors on a function-valued
+  `labels`: a confusion matrix needs one label universe shared across every
+  case, which a dynamic per-call candidate set doesn't have.
 
-- Phase 5 — hub adapters (`hub/lib/strategyKitAdapters/`) and the first
-  migrated call site, `classifyRoute.ts`. Note for whoever builds this:
-  `StrategyStorage.getCurrentFixtureSuiteHash(strategyId)` has no matching
-  setter in the Phase 2 interface. The intended shape is for a real adapter
-  to derive it live -- call `fixtureSuiteHash()` against whatever
-  `FixtureSuite` module is currently imported/committed for that
-  `strategyId`, rather than persisting a second, separately-written value
-  that can drift out of sync with the one actually used at benchmark time.
-  Note for the same phase: no `runSchemaExtractionStrategy` (the
-  schema-extraction analog of `runClosedLabelStrategy`) exists yet --
-  Phase 4's `captureIfGrounded()` is a standalone hook a caller invokes
-  with its own input/output pair, not something a runner calls
-  automatically. Building that runner, and wiring `captureIfGrounded()`
-  into it, is part of Phase 5's scope.
-
-Full design/plan: `~/.claude/plans/let-s-grill-the-last-snazzy-forest.md`.
+Full design/plan: `~/.claude/plans/let-s-grill-the-last-snazzy-forest.md`
+(Phases 1-4), `~/.claude/plans/prancy-growing-wand.md` (Phase 6).
 Originating decision record: `hub/docs/adr/0155-...md`, ledger subject
 `ollama-call-strategy-deep-module`.
 
 ## Next
 
-Phase 5: hub adapters (`hub/lib/strategyKitAdapters/`) + first migrated
-call site (`classifyRoute.ts`). See the "still open" notes above on
-`StrategyStorage.getCurrentFixtureSuiteHash()` and the missing
-schema-extraction runner before starting.
+Hub-side: migrate `generateFindParams.ts`'s `extractGroundedValuesNarrowed`
+(the live-wired stage-2 call) onto `SchemaExtractionStrategySpec` +
+`runSchemaExtractionStrategy` + `SchemaExtractionComparisonBackend`, same
+shape `classifyRoute.ts` used for closed-label. `selectTable`/
+`buildClauses`' closed-label call sites can migrate onto the dynamic-prompt
+support above whenever someone picks that up -- not done as part of Phase
+6, which only unblocked the kit-level limitation.

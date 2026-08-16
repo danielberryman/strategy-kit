@@ -28,9 +28,19 @@ export function sha256(content: string): string {
   return createHash('sha256').update(content).digest('hex')
 }
 
+/** `canonicalize()` runs everything through `JSON.stringify`, which
+ * silently drops a function value (serializes to `undefined`) rather than
+ * erroring -- so a function-valued field must be `.toString()`'d before it
+ * reaches `canonicalize`, same as `groundingCheck`/`parse` below, or two
+ * specs with genuinely different resolver logic would hash identically. */
+function hashableFieldValue(value: unknown): unknown {
+  return typeof value === 'function' ? value.toString() : value
+}
+
 /** The strategy's own declared shape -- what defines WHAT it is and HOW it
- * verifies its own output. Function-valued fields (groundingCheck, parse)
- * are captured via `.toString()` -- the only available representation of
+ * verifies its own output. Function-valued fields (groundingCheck, parse,
+ * and now system/labels when built per call rather than fixed) are
+ * captured via `.toString()` -- the only available representation of
  * "what this function actually does" without a runtime schema-description
  * object, and sufficient to catch drift: editing groundingCheck's logic,
  * even with labels/model unchanged, changes this hash. */
@@ -40,8 +50,8 @@ export function declaredShapeOf(spec: StrategySpec<any, any, any>): unknown {
       kind: spec.kind,
       strategyId: spec.strategyId,
       model: spec.model,
-      labels: [...spec.labels],
-      system: spec.system,
+      labels: typeof spec.labels === 'function' ? spec.labels.toString() : [...spec.labels],
+      system: hashableFieldValue(spec.system),
       groundingCheck: spec.groundingCheck.toString(),
     }
   }
@@ -49,7 +59,7 @@ export function declaredShapeOf(spec: StrategySpec<any, any, any>): unknown {
     kind: spec.kind,
     strategyId: spec.strategyId,
     model: spec.model,
-    system: spec.system,
+    system: hashableFieldValue(spec.system),
     parse: spec.parse.toString(),
     groundingCheck: spec.groundingCheck.toString(),
   }

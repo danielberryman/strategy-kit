@@ -1,3 +1,5 @@
+import type { ModelCallerMessage } from '../adapters/modelCaller.js'
+
 // Strategy specs: the closed, declared shape of a narrow, bounded model
 // call. Generalizes hub's ClassifierDef<Label> (classifyWithEscalation.ts)
 // and the schema/enum-grounded extraction shape generateFindParams.ts
@@ -8,8 +10,16 @@
 // (hash.ts) via its own declared shape.
 
 /** A closed-label classification strategy: pick exactly one label from a
- * fixed, closed set, given a system prompt and message history. */
-export interface ClosedLabelStrategySpec<Label extends string> {
+ * fixed, closed set, given a system prompt and message history.
+ *
+ * `Input` defaults to `ModelCallerMessage[]` (the messages themselves),
+ * which is what every fixed-prompt strategy (e.g. classifyRoute) needs --
+ * `labels`/`system` stay plain values and `runClosedLabelStrategy` never
+ * needs a caller to pass anything beyond `messages`. A strategy whose
+ * candidate set or prompt is built from something else per call (e.g.
+ * selectTable's live, keyword-shortlisted table candidates) supplies its
+ * own `Input` and a resolver function for `labels`/`system` instead. */
+export interface ClosedLabelStrategySpec<Label extends string, Input = ModelCallerMessage[]> {
   /** Unique, stable id -- the key ApprovalRecord and StrategyRegistry.use()
    * key off. A new label set or a model swap under an "identical" strategy
    * is a DIFFERENT strategyId (ADR-0155: approval doesn't transfer across
@@ -21,16 +31,17 @@ export interface ClosedLabelStrategySpec<Label extends string> {
   model: string
   /** The closed label set. Order matters (classifyOnce's first-match-wins
    * substring scan), so `readonly Label[]`, not a Set -- mirrors
-   * ClassifierDef.labels. */
-  labels: readonly Label[]
+   * ClassifierDef.labels. A function of `Input` when the candidate set is
+   * built live per call rather than fixed. */
+  labels: readonly Label[] | ((input: Input) => readonly Label[])
   /** Mechanical re-verification the raw reply/parsed label must pass
    * before the label is trusted. Lives inside the strategy's own
    * contract, not injected by the calling site. */
   groundingCheck: (raw: string, parsed: Label | 'unparseable') => boolean
-  /** Fixed system-prompt content -- not a per-call template. A strategy
-   * that needs per-call system-prompt interpolation isn't closed-label
-   * shaped. */
-  system: string
+  /** System-prompt content. A function of `Input` when the prompt is built
+   * live per call (e.g. listing that call's candidate labels) rather than
+   * fixed. */
+  system: string | ((input: Input) => string)
 }
 
 /** A schema/enum-grounded extraction strategy: the model produces a
@@ -44,7 +55,10 @@ export interface SchemaExtractionStrategySpec<Input, Output> {
   strategyId: string
   kind: 'schema-extraction'
   model: string
-  system: string
+  /** System-prompt content. A function of `Input` when the prompt is built
+   * live per call (e.g. listing that call's candidate columns) rather than
+   * fixed. */
+  system: string | ((input: Input) => string)
   /** Parses the model's raw text reply into a structured Output, or null
    * if unparseable. A plain function, not a schema-description object --
    * keeps this library free of any JSON-schema/validation runtime
@@ -58,5 +72,5 @@ export interface SchemaExtractionStrategySpec<Input, Output> {
 }
 
 export type StrategySpec<Label extends string = string, Input = unknown, Output = unknown> =
-  | ClosedLabelStrategySpec<Label>
+  | ClosedLabelStrategySpec<Label, Input>
   | SchemaExtractionStrategySpec<Input, Output>
