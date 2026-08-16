@@ -17,4 +17,11 @@ describe('index exports', () => {
     expect(typeof strategyKit.hashDeclaredShape).toBe('function')
     expect(typeof strategyKit.hashFixtureSuite).toBe('function')
   })
+
+  it('exposes the scoring backend', () => {
+    expect(typeof strategyKit.FixedComparisonBackend.run).toBe('function')
+    expect(typeof strategyKit.toApprovalRecord).toBe('function')
+    expect(typeof strategyKit.defineFixtureSuite).toBe('function')
+    expect(typeof strategyKit.fixtureSuiteHash).toBe('function')
+  })
 })
