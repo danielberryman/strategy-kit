@@ -13,19 +13,28 @@ import type {
   MajorityWrongCase,
 } from './types.js'
 
-export interface FixedComparisonOptions {
+export interface FixedComparisonOptions<Input = ModelCallerMessage[]> {
   /** How many times to run each case, for sampling variance -- default 3,
    * mirrors capability-router-test.mjs's own default. */
   repeats?: number
   signal?: AbortSignal
+  /** Builds the actual model messages for a case's `input` -- same role as
+   * SchemaExtractionComparisonBackend's own toMessages, and for the same
+   * reason: runClosedLabelStrategy takes `input` (for resolving
+   * system/labels) and `messages` (the model turn) as separate arguments,
+   * since an arbitrary Input has no generic way to become
+   * ModelCallerMessage[] on its own. Defaults to treating `input` as the
+   * messages directly -- exact, unchanged behavior for every strategy
+   * whose Input stays the default. */
+  toMessages?: (input: Input) => ModelCallerMessage[]
 }
 
-async function run<Label extends string>(
-  suite: ClosedLabelFixtureSuite<Label>,
-  spec: ClosedLabelStrategySpec<Label>,
+async function run<Label extends string, Input = ModelCallerMessage[]>(
+  suite: ClosedLabelFixtureSuite<Label, Input>,
+  spec: ClosedLabelStrategySpec<Label, Input>,
   caller: ModelCaller,
-  options: FixedComparisonOptions = {}
-): Promise<FixedComparisonResult<ModelCallerMessage[], Label>> {
+  options: FixedComparisonOptions<Input> = {}
+): Promise<FixedComparisonResult<Input, Label>> {
   // A confusion matrix needs one fixed label universe shared across every
   // case -- a spec whose `labels` is a function (a dynamic, per-call
   // candidate set, e.g. selectTable's keyword-shortlisted tables) has no
@@ -42,7 +51,8 @@ async function run<Label extends string>(
   }
   const labels = spec.labels
   const repeats = options.repeats ?? 3
-  const perCase: FixedComparisonCaseResult<ModelCallerMessage[], Label>[] = suite.cases.map((c) => ({
+  const toMessages = options.toMessages ?? ((input: Input) => input as unknown as ModelCallerMessage[])
+  const perCase: FixedComparisonCaseResult<Input, Label>[] = suite.cases.map((c) => ({
     caseId: c.id,
     input: c.input,
     expected: c.expected,
@@ -53,7 +63,8 @@ async function run<Label extends string>(
   // avoids hammering a local Ollama instance with concurrent requests.
   for (let r = 0; r < repeats; r++) {
     for (let i = 0; i < suite.cases.length; i++) {
-      const label = await runClosedLabelStrategy(spec, caller, suite.cases[i].input, options.signal)
+      const c = suite.cases[i]
+      const label = await runClosedLabelStrategy(spec, caller, toMessages(c.input), options.signal, c.input)
       ;(perCase[i].runs as FixedComparisonRun<Label>[]).push({ runIndex: r, label })
     }
   }
@@ -89,7 +100,7 @@ async function run<Label extends string>(
   // across a case's repeats. A Map built in run order gives that
   // insertion-order guarantee explicitly rather than leaning on an
   // implicit object-key-order convention.
-  const majorityWrongCases: MajorityWrongCase<ModelCallerMessage[], Label>[] = []
+  const majorityWrongCases: MajorityWrongCase<Input, Label>[] = []
   for (const c of perCase) {
     const counts = new Map<Label | 'UNPARSEABLE', number>()
     for (const caseRun of c.runs) {

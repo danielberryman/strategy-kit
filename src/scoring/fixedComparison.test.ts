@@ -3,7 +3,7 @@ import { FixedComparisonBackend, toApprovalRecord } from './fixedComparison.js'
 import { hashDeclaredShape } from '../strategy/hash.js'
 import { fixtureSuiteHash } from './fixtureSuite.js'
 import type { ClosedLabelStrategySpec } from '../strategy/types.js'
-import type { ClosedLabelFixtureSuite } from './types.js'
+import type { ClosedLabelFixtureSuite, FixtureSuite } from './types.js'
 import type { ModelCaller, ModelCallerParams } from '../adapters/modelCaller.js'
 
 // Queued fake: each streamTurn() call consumes the next scripted reply in
@@ -90,6 +90,46 @@ describe('FixedComparisonBackend.run', () => {
     const result = await FixedComparisonBackend.run(suite, spec, caller)
     expect(result.repeats).toBe(3)
     expect(result.totalCalls).toBe(9)
+  })
+})
+
+// A fixed-label, dynamic-system strategy -- query-shape's own shape (table/
+// columns drive the prompt, but the label set itself never varies). Input
+// isn't ModelCallerMessage[] here, so scoring needs a toMessages bridge to
+// build the real model turn per case, same as SchemaExtractionComparisonBackend
+// already requires for its own Input generality.
+type GateInput = { topic: string; utterance: string }
+
+const gateSpec: ClosedLabelStrategySpec<'YES' | 'NO', GateInput> = {
+  strategyId: 'test-dynamic-system',
+  kind: 'closed-label',
+  model: 'llama3.2',
+  labels: ['YES', 'NO'],
+  groundingCheck: (_raw, parsed) => parsed !== 'unparseable',
+  system: (input) => `Is this about ${input.topic}? Answer YES or NO.`,
+}
+
+const gateSuite: FixtureSuite<GateInput, 'YES' | 'NO'> = {
+  suiteId: 'dynamic-system-suite',
+  version: '1',
+  cases: [
+    { id: 'a', input: { topic: 'weather', utterance: 'will it rain?' }, expected: 'YES' },
+    { id: 'b', input: { topic: 'weather', utterance: 'who won the game?' }, expected: 'NO' },
+  ],
+}
+
+describe('FixedComparisonBackend.run with a custom Input and toMessages', () => {
+  it('resolves system from Input and sends toMessages(input) as the model turn', async () => {
+    const caller = queuedCaller(['YES', 'NO'])
+    const result = await FixedComparisonBackend.run(gateSuite, gateSpec, caller, {
+      repeats: 1,
+      toMessages: (input) => [{ role: 'user', text: input.utterance }],
+    })
+
+    expect(result.totalCalls).toBe(2)
+    expect(result.totalCorrect).toBe(2)
+    expect(caller.calls[0].system).toBe('Is this about weather? Answer YES or NO.')
+    expect(caller.calls[0].messages).toEqual([{ role: 'user', text: 'will it rain?' }])
   })
 })
 
