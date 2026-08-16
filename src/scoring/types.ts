@@ -26,7 +26,14 @@ export interface FixtureSuite<Input, Expected> {
 // schema-extraction scoring could reuse it later without a breaking
 // change; this alias and FixedComparisonBackend.run() stay narrowed to
 // closed-label. SchemaExtractionFixtureSuite (below) is that later reuse.
-export type ClosedLabelFixtureSuite<Label extends string> = FixtureSuite<ModelCallerMessage[], Label>
+//
+// Input defaults to ModelCallerMessage[] -- every fixed-prompt strategy
+// (classifyRoute) needs nothing else, so existing call sites are
+// unaffected. A strategy whose system prompt (not just its labels) is
+// built from something else per call -- query-shape's gate/shape1/shape2,
+// whose prompts embed live table/column data -- supplies its own Input
+// here too, the same widening ClosedLabelStrategySpec itself already got.
+export type ClosedLabelFixtureSuite<Label extends string, Input = ModelCallerMessage[]> = FixtureSuite<Input, Label>
 
 /** Schema-extraction's analog of ClosedLabelFixtureSuite -- unlike that
  * alias, Input/Output aren't pinned to a fixed pair, since every
