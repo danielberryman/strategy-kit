@@ -26,6 +26,21 @@ async function run<Label extends string>(
   caller: ModelCaller,
   options: FixedComparisonOptions = {}
 ): Promise<FixedComparisonResult<ModelCallerMessage[], Label>> {
+  // A confusion matrix needs one fixed label universe shared across every
+  // case -- a spec whose `labels` is a function (a dynamic, per-call
+  // candidate set, e.g. selectTable's keyword-shortlisted tables) has no
+  // single axis a matrix could use, since two cases could see different
+  // candidate sets entirely. Fail loudly rather than silently scoring
+  // against a wrong/empty axis -- same hard-error posture as the approval
+  // gate itself (registry.ts).
+  if (typeof spec.labels === 'function') {
+    throw new Error(
+      `strategy-kit: FixedComparisonBackend.run() requires a static labels array -- ` +
+        `"${spec.strategyId}" declares labels as a function. A dynamic candidate set has no single ` +
+        `confusion-matrix axis across cases; that strategy needs its own scoring approach.`
+    )
+  }
+  const labels = spec.labels
   const repeats = options.repeats ?? 3
   const perCase: FixedComparisonCaseResult<ModelCallerMessage[], Label>[] = suite.cases.map((c) => ({
     caseId: c.id,
@@ -49,16 +64,16 @@ async function run<Label extends string>(
   )
 
   const confusionMatrix = {} as ConfusionMatrix<Label>
-  for (const a of spec.labels) {
+  for (const a of labels) {
     confusionMatrix[a] = {} as Record<Label | 'UNPARSEABLE', number>
-    for (const b of [...spec.labels, 'UNPARSEABLE' as const]) confusionMatrix[a][b] = 0
+    for (const b of [...labels, 'UNPARSEABLE' as const]) confusionMatrix[a][b] = 0
   }
   let totalCorrect = 0
   let totalCalls = 0
   for (const c of perCase) {
     for (const caseRun of c.runs) {
       totalCalls++
-      const predicted = spec.labels.includes(caseRun.label as Label) ? (caseRun.label as Label) : 'UNPARSEABLE'
+      const predicted = labels.includes(caseRun.label as Label) ? (caseRun.label as Label) : 'UNPARSEABLE'
       confusionMatrix[c.expected][predicted]++
       if (predicted === c.expected) totalCorrect++
     }
@@ -78,7 +93,7 @@ async function run<Label extends string>(
   for (const c of perCase) {
     const counts = new Map<Label | 'UNPARSEABLE', number>()
     for (const caseRun of c.runs) {
-      const l = spec.labels.includes(caseRun.label as Label) ? (caseRun.label as Label) : ('UNPARSEABLE' as const)
+      const l = labels.includes(caseRun.label as Label) ? (caseRun.label as Label) : ('UNPARSEABLE' as const)
       counts.set(l, (counts.get(l) ?? 0) + 1)
     }
     const [majorityLabel] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]
