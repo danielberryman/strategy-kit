@@ -49,11 +49,28 @@
   suite, every metric asserted, not just aggregate accuracy --
   `judge.test.ts`), plus 2 new assertions in `index.test.ts`. 42 tests
   total across 10 suites, `npm run typecheck`/`test`/`build` all clean.
+- Phase 4 (Capture mechanism): `CaptureRecord`/`CaptureStorage`
+  (`src/capture/types.ts`), `pseudonymizeCapture()`
+  (`src/capture/pseudonymize.ts` -- two-pass: collect every output string
+  leaf that's a substring of the *original* input text and get each a
+  stable fake via `Pseudonymizer.swap()`, then apply all swaps to a copy
+  of the input text and to the output, so a value repeated more than once
+  in `output` still swaps to the same fake and a captured pair stays
+  substring-grounded after pseudonymization), and `captureIfGrounded()`
+  (`src/capture/capture.ts` -- the hook: no-ops if
+  `SchemaExtractionStrategySpec.groundingCheck` rejects the pair,
+  otherwise pseudonymizes and calls `CaptureStorage.put()`, returning the
+  stored `CaptureRecord`). `CaptureStorage` is interface-only, same
+  posture as `StrategyStorage` -- no filesystem/stateRoot code in this
+  library; a hub adapter (Phase 5) backs it against
+  `<stateRoot>/strategy-captures/<strategyId>/`, one JSON file per record,
+  the same atomic temp-file + rename convention as hub's
+  `write/push/queue.ts`. All 3 stub files filled in. 7 new tests across 2
+  new suites (`pseudonymize.test.ts`, `capture.test.ts`). 49 tests total
+  across 12 suites, `npm run typecheck`/`test`/`build` all clean.
 
 ## Not yet built
 
-- Phase 4 — Capture mechanism: pseudonymized capture records + retention
-  sweep.
 - Phase 5 — hub adapters (`hub/lib/strategyKitAdapters/`) and the first
   migrated call site, `classifyRoute.ts`. Note for whoever builds this:
   `StrategyStorage.getCurrentFixtureSuiteHash(strategyId)` has no matching
@@ -62,6 +79,12 @@
   `FixtureSuite` module is currently imported/committed for that
   `strategyId`, rather than persisting a second, separately-written value
   that can drift out of sync with the one actually used at benchmark time.
+  Note for the same phase: no `runSchemaExtractionStrategy` (the
+  schema-extraction analog of `runClosedLabelStrategy`) exists yet --
+  Phase 4's `captureIfGrounded()` is a standalone hook a caller invokes
+  with its own input/output pair, not something a runner calls
+  automatically. Building that runner, and wiring `captureIfGrounded()`
+  into it, is part of Phase 5's scope.
 
 Full design/plan: `~/.claude/plans/let-s-grill-the-last-snazzy-forest.md`.
 Originating decision record: `hub/docs/adr/0155-...md`, ledger subject
@@ -69,5 +92,7 @@ Originating decision record: `hub/docs/adr/0155-...md`, ledger subject
 
 ## Next
 
-Phase 4: capture mechanism (pseudonymized capture records + retention
-sweep). `src/capture/*.ts` are still `export {}` stubs.
+Phase 5: hub adapters (`hub/lib/strategyKitAdapters/`) + first migrated
+call site (`classifyRoute.ts`). See the "still open" notes above on
+`StrategyStorage.getCurrentFixtureSuiteHash()` and the missing
+schema-extraction runner before starting.
