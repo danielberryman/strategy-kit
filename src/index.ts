@@ -28,3 +28,7 @@ export type { FixedComparisonOptions } from './scoring/fixedComparison.js'
 export { defineFixtureSuite, fixtureSuiteHash } from './scoring/fixtureSuite.js'
 
 export type { JudgeBackend } from './scoring/judge.js'
+
+export type { CaptureRecord, CaptureStorage } from './capture/types.js'
+export { captureIfGrounded } from './capture/capture.js'
+export { pseudonymizeCapture } from './capture/pseudonymize.js'
