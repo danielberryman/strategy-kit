@@ -98,6 +98,20 @@
   `FixedComparisonBackend.run()` now hard-errors on a function-valued
   `labels`: a confusion matrix needs one label universe shared across every
   case, which a dynamic per-call candidate set doesn't have.
+- Phase 7 (this repo): `FixedComparisonBackend`/`ClosedLabelFixtureSuite`
+  generalized over `Input`, mirroring `SchemaExtractionComparisonBackend`'s
+  existing shape -- found needed while migrating hub's `buildClauses`'
+  query-shape cascade (fixed `labels`, but a per-call `system` built from
+  table/column data), which Phase 6's `labels`-as-function widening alone
+  didn't unblock: `run()` was still hardcoded to `Input =
+  ModelCallerMessage[]`, with no way to bridge a custom `Input` to the real
+  model turn. `FixedComparisonOptions` gained an optional `toMessages:
+  (input: Input) => ModelCallerMessage[]`, defaulting to treating `input`
+  as the messages directly -- every existing fixed-Input strategy
+  (`classify-route`) is unaffected, confirmed by the full suite passing
+  unchanged. Doesn't touch the Phase 6 hard-error on function-valued
+  `labels` -- that's a genuinely different problem (no shared
+  confusion-matrix axis), still unsolved.
 
 Full design/plan: `~/.claude/plans/let-s-grill-the-last-snazzy-forest.md`
 (Phases 1-4), `~/.claude/plans/prancy-growing-wand.md` (Phase 6).
@@ -106,10 +120,19 @@ Originating decision record: `hub/docs/adr/0155-...md`, ledger subject
 
 ## Next
 
-Hub-side: migrate `generateFindParams.ts`'s `extractGroundedValuesNarrowed`
-(the live-wired stage-2 call) onto `SchemaExtractionStrategySpec` +
-`runSchemaExtractionStrategy` + `SchemaExtractionComparisonBackend`, same
-shape `classifyRoute.ts` used for closed-label. `selectTable`/
-`buildClauses`' closed-label call sites can migrate onto the dynamic-prompt
-support above whenever someone picks that up -- not done as part of Phase
-6, which only unblocked the kit-level limitation.
+Hub-side: `generateFindParams.ts`'s `extractGroundedValuesNarrowed` and
+`buildClauses`' query-shape cascade are both migrated now (hub's own
+`HANDOFF.md`). Still open: `selectTable`'s `classifyTableChoice` and
+`buildClauses`' aggregation cascade's `resolveField`/`resolveGroupColumn`
+have **dynamic labels** (a live per-call candidate shortlist), which Phase
+7's `Input`/`toMessages` generalization doesn't help with --
+`FixedComparisonBackend.run()` still hard-errors on function-valued
+`labels` (Phase 6's deliberate choice: no shared confusion-matrix axis
+across cases with different candidate sets). Needs its own decision
+before either can migrate: a bespoke scoring loop in the consuming
+approve script (call `runClosedLabelStrategy` directly per fixture case,
+score by hand), or a new backend here mirroring
+`SchemaExtractionComparisonBackend`'s caller-supplied-equality shape.
+Aggregation's own op-resolution steps (fixed labels) aren't blocked by
+either gap and could follow query-shape's exact pattern whenever someone
+picks that up.
