@@ -13,15 +13,18 @@ and storage through the `src/adapters/` interfaces.
 
 ## Status
 
-Early scaffolding. See `HANDOFF.md` for current phase and what's next.
+Core library is built out: strategy registry, hash-pinned approval gate,
+fixed-comparison scoring (including LLM-judge scoring and a
+schema-extraction comparison backend), and a pseudonymized capture
+pipeline. 66 tests, typecheck and build both clean. In active use as the
+call-strategy layer behind a production classification/routing pipeline.
 
 ## Install
 
-Not published. Consume via `file:` dependency, same posture as
-`component-library`:
+Not on npm yet. Consume via a git or `file:` dependency:
 
 ```json
-"strategy-kit": "file:../strategy-kit"
+"strategy-kit": "github:danielberryman/strategy-kit"
 ```
 
 ## Commands

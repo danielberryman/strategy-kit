@@ -5,7 +5,7 @@
 // "call", an "output", or a "verdict" concretely look like is decided
 // here, since Track 2 itself isn't designed yet.
 //
-// Hard constraint, already decided (ADR-0155): if a JudgeBackend
+// Hard constraint, already decided: if a JudgeBackend
 // implementation makes its own model call to produce a verdict, that call
 // MUST itself go through an approved Track-1 strategy
 // (StrategyRegistry.use()) -- never a second, ungoverned call path

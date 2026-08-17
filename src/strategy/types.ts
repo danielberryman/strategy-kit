@@ -1,13 +1,14 @@
 import type { ModelCallerMessage } from '../adapters/modelCaller.js'
 
 // Strategy specs: the closed, declared shape of a narrow, bounded model
-// call. Generalizes hub's ClassifierDef<Label> (classifyWithEscalation.ts)
-// and the schema/enum-grounded extraction shape generateFindParams.ts
-// hand-rolls per stage. A strategy declares everything needed to (a) run
-// the call, (b) mechanically re-verify its output (groundingCheck, part of
-// the strategy's own contract -- never injected by a caller, ADR-0155's
-// refinement), and (c) be hashed deterministically for the approval gate
-// (hash.ts) via its own declared shape.
+// call -- generalizing a pattern that otherwise gets hand-rolled per call
+// site: closed-label classification, and schema/enum-grounded extraction.
+// A strategy declares everything needed to (a) run the call, (b)
+// mechanically re-verify its output (groundingCheck, part of the
+// strategy's own contract -- never injected by a caller, so a caller can't
+// silently weaken the check a strategy was approved under), and (c) be
+// hashed deterministically for the approval gate (hash.ts) via its own
+// declared shape.
 
 /** A closed-label classification strategy: pick exactly one label from a
  * fixed, closed set, given a system prompt and message history.
@@ -22,8 +23,8 @@ import type { ModelCallerMessage } from '../adapters/modelCaller.js'
 export interface ClosedLabelStrategySpec<Label extends string, Input = ModelCallerMessage[]> {
   /** Unique, stable id -- the key ApprovalRecord and StrategyRegistry.use()
    * key off. A new label set or a model swap under an "identical" strategy
-   * is a DIFFERENT strategyId (ADR-0155: approval doesn't transfer across
-   * label vocabularies or model swaps). */
+   * is a DIFFERENT strategyId: approval doesn't transfer across label
+   * vocabularies or model swaps. */
   strategyId: string
   kind: 'closed-label'
   /** The literal model string this strategy is approved against. Pinned

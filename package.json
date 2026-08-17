@@ -1,9 +1,14 @@
 {
   "name": "strategy-kit",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielberryman/strategy-kit"
+  },
   "type": "module",
-  "description": "Closed-set call-strategy registry, fixed-comparison scoring, and a hash-pinned approval gate for narrow, bounded model calls (classification, schema-grounded extraction) -- the shared abstraction generalizeFindParams.ts and classifyWithEscalation.ts each hand-rolled independently.",
+  "description": "Closed-set call-strategy registry, fixed-comparison scoring, and a hash-pinned approval gate for narrow, bounded model calls (classification, schema-grounded extraction) -- the shared abstraction that otherwise gets hand-rolled independently per call site.",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",

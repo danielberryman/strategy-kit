@@ -1,19 +1,17 @@
 import type { ModelCaller, ModelCallerMessage } from '../adapters/modelCaller.js'
 import type { ClosedLabelStrategySpec, SchemaExtractionStrategySpec } from './types.js'
 
-// Ported from hub's classifyWithEscalation.ts (classifyOnce/parseLabel/
-// normalizeLabel) -- strategy-kit's own copy, not a re-export. hub's
-// classifyWithEscalation.ts is untouched by this phase (Phase 5 migrates
-// classifyRoute.ts later). Adapted to call through ModelCaller instead of
-// hub's ModelClient: no `tools: []` to pass at the call site at all, since
-// ModelCaller's type has no tools field to begin with.
+// classifyOnce/parseLabel/normalizeLabel: strategy-kit's own implementation
+// of a closed-label call+parse cycle, calling through ModelCaller (no
+// `tools: []` to pass at the call site at all, since ModelCaller's type has
+// no tools field to begin with).
 
-// Mirrors capability-router-test.mjs's own parseLabel(): first-match-wins
-// uppercase substring match, no numeric confidence exists anywhere in this
-// pipeline. Backslashes and punctuation (._- and spaces) are stripped
-// before matching -- ported verbatim from hub, including the exact bugs
-// it fixes (mistral's escaped "JOB\_SEARCH", llama3.2's punctuation-
-// dropped "CANNOTEXPRESS").
+// parseLabel: first-match-wins uppercase substring match, no numeric
+// confidence exists anywhere in this pipeline. Backslashes and punctuation
+// (._- and spaces) are stripped before matching -- this specifically
+// compensates for real local-model output quirks seen in production (a
+// model escaping an underscore as "JOB\_SEARCH", or dropping punctuation
+// entirely as "CANNOTEXPRESS"); it's not defensive-for-its-own-sake.
 function normalizeLabel(s: string): string {
   return s.toUpperCase().replace(/\\/g, '').replace(/[._\- ]/g, '')
 }

@@ -1,7 +1,6 @@
-// Minimal adapter for pseudonymized capture. Phase 4 (capture) is the
-// actual consumer -- Phase 2 only needs this to exist and typecheck.
-// Shaped ~1:1 off hub's real Vault (examples/drawer-broker/gate/vault.ts),
-// narrowed to the two operations a capture pipeline needs.
+// Minimal adapter for pseudonymized capture, narrowed to the two
+// operations a capture pipeline needs. Shaped off a real production vault
+// implementation -- swap-in/swap-out with stable, consistent fakes.
 export interface Pseudonymizer {
   /** Real value in, stable fake out -- the same real value always yields
    * the same fake within this Pseudonymizer's lifetime (consistency), so
