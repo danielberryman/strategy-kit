@@ -65,10 +65,9 @@ function normalizePair(p: Pair): string {
   return `${p.field.toLowerCase()}=${p.value.toLowerCase()}`
 }
 
-// Order-independent, case-insensitive set equality -- ported shape from
-// hub's extract-grounded-values-router-test.mjs (setsEqual/pairsKey), the
-// real-world reason this backend's isEqual/keyOf are caller-supplied rather
-// than a fixed default.
+// Order-independent, case-insensitive set equality -- a real-world example
+// of why this backend's isEqual/keyOf are caller-supplied rather than a
+// fixed default.
 function pairsKey(pairs: Pair[]): string {
   return JSON.stringify([...pairs].map(normalizePair).sort())
 }

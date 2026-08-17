@@ -1,13 +1,11 @@
 // Thin, vendor-neutral wrapper a consumer implements against its own real
-// streaming model client (hub: ModelClient.streamTurn(), see
-// hub/lib/conversationalLane/modelClient.ts -- NOT imported here, per this
-// library's standing invariant; only the shape is mirrored).
+// streaming model client -- not imported here, per this library's standing
+// invariant; only the shape is mirrored.
 //
 // Deliberately has NO `tools`/`toolChoice` field anywhere in this type: a
-// Track-1 strategy literally cannot express a tool call, a compile-time
-// fact reinforcing ADR-0155's Phase-0 hotfix (OllamaModelClient.
-// streamTurn() hardcoding `tools: []` at runtime) with a second,
-// independent layer at the type level. Even a consumer's ModelCaller
+// Track-1 strategy literally cannot express a tool call, reinforcing at the
+// type level a runtime decision consumers make independently (e.g. a local
+// model client that hardcodes an empty tool list). Even a consumer's ModelCaller
 // implementation wrapping a tool-capable ModelClient underneath has no way
 // to plumb a tool through THIS interface -- the field doesn't exist to
 // pass one through.
